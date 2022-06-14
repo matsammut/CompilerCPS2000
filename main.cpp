@@ -11,34 +11,45 @@ class tableLexerReturn {       // The class
   public:             // Access specifier
     int stackTop;        // Attribute (int variable)
     string lexemeFin;  // Attribute (string variable)
+    int counter;
 };
 
-char NextChar(vector<char> input){
+char NextChar(vector<char> input,int decrement){
     static int nextcharpointer = -1;
-    nextcharpointer += 1;
-    return input[nextcharpointer];
+    if (decrement == -1){
+        nextcharpointer -= 1;
+        return 'F';
+    }
+    else if(decrement == 0){
+        nextcharpointer = -1;
+        return 'F';
+    }
+    else{
+        nextcharpointer += 1;
+        return input[nextcharpointer];
+    }
 }
 
-enum classif{ ERROR = 0,EXCLEMATION = 1, SINGLEQUOTE = 2, LBRACKET = 3, RBRACKET =  4,MULTI = 5, PLUS = 6, MINUS = 7, STOP = 8, DIVISION = 9, DIGIT = 10, COLIN = 11, SEMICOLIN = 12, LTHAN = 13, EQUALS = 14, GTHAN = 15, CHAR = 16, BACKSLASH = 17, LCURLY = 18, RCURLY = 19, COMMA = 20 };
+enum classif{ ERROR = 0,EXCLEMATION = 1, SINGLEQUOTE = 2, LBRACKET = 3, RBRACKET =  4,MULTI = 5, PLUS = 6, MINUS = 7, STOP = 8, DIVISION = 9, DIGIT = 10, COLIN = 11, SEMICOLIN = 12, LTHAN = 13, EQUALS = 14, GTHAN = 15, CHAR = 16, BACKSLASH = 17, LCURLY = 18, RCURLY = 19, COMMA = 20,SPACE = 21 };
 classif CharCat(char character){
     // -100 = other
     int asciiIndex = character;
-    classif CAT[] = {ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR, EXCLEMATION, ERROR,ERROR, ERROR, ERROR, ERROR, SINGLEQUOTE, LBRACKET,RBRACKET,MULTI, PLUS,COMMA,MINUS, STOP, DIVISION,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT, COLIN, SEMICOLIN, LTHAN,EQUALS,GTHAN, ERROR, ERROR, CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,BACKSLASH,ERROR,ERROR,CHAR,ERROR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR, LCURLY, ERROR, RCURLY, ERROR, ERROR};
+    classif CAT[] = {ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,SPACE, EXCLEMATION, ERROR,ERROR, ERROR, ERROR, ERROR, SINGLEQUOTE, LBRACKET,RBRACKET,MULTI, PLUS,COMMA,MINUS, STOP, DIVISION,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT, COLIN, SEMICOLIN, LTHAN,EQUALS,GTHAN, ERROR, ERROR, CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,ERROR,BACKSLASH,ERROR,ERROR,CHAR,ERROR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR, LCURLY, ERROR, RCURLY, ERROR, ERROR};
     
     return CAT[asciiIndex];
 }
 
 tableLexerReturn NextWord(vector<char> input){
     // token type
-    int Sa[] = {1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,30,33};
-    
-    int n = sizeof(Sa) / sizeof(*Sa);
+    int Sa[] = {1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,30,33,34};
+    tableLexerReturn returnLexer;
+
     // state x character
     // transition table
     int TX[36][20] = {};
-    for ( int i = 0; i < 36; i ++){
-        for(int j = 0; j < 20; j++){
-            TX[i][j] = 0;
+    for ( int i = 0; i < 35; i ++){
+        for(int j = 0; j < 22; j++){
+            TX[i][j] = -1;
         }
     }
     TX[0][10] = 1;
@@ -47,12 +58,13 @@ tableLexerReturn NextWord(vector<char> input){
     TX[2][10] = 3;
     TX[3][10] = 3;
     TX[0][2] = 4;
-    for(int j = 0; j < 20; j++){
+    for(int j = 0; j < 22; j++){
             TX[4][j] = 4;
     }
     TX[4][2] = 5;
     TX[0][16] = 6;
     TX[6][16] = 6;
+    TX[6][10] = 6;
     TX[0][3] = 7;
     TX[0][4] = 12;
     TX[0][13] = 8;
@@ -67,7 +79,7 @@ tableLexerReturn NextWord(vector<char> input){
     TX[0][6] = 18;
     TX[0][9] = 19;
     TX[19][9] = 27;
-    for(int j = 0; j < 20; j++){
+    for(int j = 0; j < 22; j++){
             TX[27][j] = 27;
     }
     TX[0][12] = 20;
@@ -86,6 +98,7 @@ tableLexerReturn NextWord(vector<char> input){
     TX[0][17] = 29;
     TX[29][17] = 30;
     TX[30][16] = 30;
+    TX[0][21] = 34;
     // Initialisation
     int state = 0;
     string lexeme = "";
@@ -94,16 +107,19 @@ tableLexerReturn NextWord(vector<char> input){
     // 100 is bad
 
     char character = '\0';
+    returnLexer.counter = 0;
     // Scanning Loop
     // 69 is Se (error state)
-    while (state != 69){
+    while (state != -1){
+        returnLexer.counter += 1;
         // Next Char
-        character = NextChar(input);
-        lexeme.append(&character);
-        bool exists = std::find(Sa, Sa + n, character) != Sa + n;
+        character = NextChar(input,4);
+        lexeme.push_back(character);
+        // bool exists = std::find(Sa, Sa + n, character) != Sa + n;
+        bool exists = (std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa));
             if (exists) {
                 //clear stack
-                while (stack.top() != 0){
+                while (!stack.empty()){
                     stack.pop();
                 }
             }
@@ -113,20 +129,21 @@ tableLexerReturn NextWord(vector<char> input){
         // update state
         state = TX[state][cat];
     }
+    stack.push(state);
     // Rollback Loop
-    while ((std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa)) && state != 100){
+    while (!(std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa)) || state == 100){
         // method to safely pop in c++
-        state = stack.top();
         stack.pop();
         lexeme.pop_back();
+        state = stack.top();
     }
 
-    tableLexerReturn returnLexer;
+    
     // Report result
     if (std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa)){
         returnLexer.stackTop = stack.top();
         returnLexer.lexemeFin = lexeme;
-        cout << lexeme << stack.top() << "\n";
+        cout << lexeme <<"\t"<<+ stack.top() << "\n";
         return returnLexer;
     }
     else{
@@ -139,27 +156,34 @@ int main(){
     ifstream myfile("example.txt");
     string line;
     tableLexerReturn ReturnHold;
+    vector<string> tokens; 
+    vector<int> stateType;
+    
+    
     if (myfile.is_open())
     {
         while ( getline (myfile,line) )
-        {
-        cout << line << '\n';
+        {                          
+            vector<char> fileVector; 
+            size_t notEOF = 0;
+            for (size_t i = 0; i < line.length(); i++){
+                fileVector.push_back(line[i]);
+            }
+
+            //print vector as string
+            std::string s(fileVector.begin(), fileVector.end());
+            std::cout << s <<"\n";
+            while (notEOF != fileVector.size()){
+                
+                ReturnHold = NextWord(fileVector);
+                tokens.push_back(ReturnHold.lexemeFin);
+                stateType.push_back(ReturnHold.stackTop);
+                notEOF += ReturnHold.counter;
+                notEOF -= 1;
+                NextChar(fileVector, -1);
+            }
+            NextChar(fileVector, 0);
         }
-        cin >> line;
-        vector<char> fileVector;
-        for (size_t i; i < line.length(); i++){
-            fileVector.push_back(line[i]);
-        }
-
-        // doesnt read spaces
-        // istream_iterator<char> start(myfile), end;
-        // vector<char> fileVector(start, end);
-
-        //print vector as string
-        std::string s(fileVector.begin(), fileVector.end());
-        std::cout << s <<"\n";
-
-        // ReturnHold = NextWord(fileVector);
         myfile.close();
     }
 }
