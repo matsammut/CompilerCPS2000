@@ -18,7 +18,11 @@ fn AverageOfThree(x:float, y:float, x:float) -> float {
     return total / 3;
 }
 
-
+/*
+* Same functionality as the function above but using less code.
+* Note the use of the brackets in the expression following 
+* the return statement.
+*/
 fn AverageOfThree_2(x:float, y:float, x:float) -> float {
     return (x + y + z) /3;
 }

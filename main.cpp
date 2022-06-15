@@ -30,25 +30,25 @@ char NextChar(vector<char> input,int decrement){
     }
 }
 
-enum classif{ ERROR = 0,EXCLEMATION = 1, SINGLEQUOTE = 2, LBRACKET = 3, RBRACKET =  4,MULTI = 5, PLUS = 6, MINUS = 7, STOP = 8, DIVISION = 9, DIGIT = 10, COLIN = 11, SEMICOLIN = 12, LTHAN = 13, EQUALS = 14, GTHAN = 15, CHAR = 16, BACKSLASH = 17, LCURLY = 18, RCURLY = 19, COMMA = 20,SPACE = 21 };
+enum classif{ ERROR = 0,EXCLEMATION = 1, SINGLEQUOTE = 2, LBRACKET = 3, RBRACKET =  4,MULTI = 5, PLUS = 6, MINUS = 7, STOP = 8, DIVISION = 9, DIGIT = 10, COLIN = 11, SEMICOLIN = 12, LTHAN = 13, EQUALS = 14, GTHAN = 15, CHAR = 16, BACKSLASH = 17, LCURLY = 18, RCURLY = 19, COMMA = 20,SPACE = 21, NEWLINE = 22 };
 classif CharCat(char character){
     // -100 = other
     int asciiIndex = character;
-    classif CAT[] = {ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,SPACE, EXCLEMATION, ERROR,ERROR, ERROR, ERROR, ERROR, SINGLEQUOTE, LBRACKET,RBRACKET,MULTI, PLUS,COMMA,MINUS, STOP, DIVISION,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT, COLIN, SEMICOLIN, LTHAN,EQUALS,GTHAN, ERROR, ERROR, CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,ERROR,BACKSLASH,ERROR,ERROR,CHAR,ERROR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR, LCURLY, ERROR, RCURLY, ERROR, ERROR};
+    classif CAT[] = {ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,NEWLINE,ERROR,ERROR,NEWLINE,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,SPACE, EXCLEMATION, ERROR,ERROR, ERROR, ERROR, ERROR, SINGLEQUOTE, LBRACKET,RBRACKET,MULTI, PLUS,COMMA,MINUS, STOP, DIVISION,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT,DIGIT, COLIN, SEMICOLIN, LTHAN,EQUALS,GTHAN, ERROR, ERROR, CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,ERROR,BACKSLASH,ERROR,ERROR,CHAR,ERROR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR,CHAR, LCURLY, ERROR, RCURLY, ERROR, ERROR};
     
     return CAT[asciiIndex];
 }
 
 tableLexerReturn NextWord(vector<char> input){
     // token type
-    int Sa[] = {1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,30,33,34};
+    int Sa[] = {1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,26,27,30,32,33};
     tableLexerReturn returnLexer;
 
     // state x character
     // transition table
-    int TX[36][20] = {};
-    for ( int i = 0; i < 35; i ++){
-        for(int j = 0; j < 22; j++){
+    int TX[34][23] = {};
+    for ( int i = 0; i < 34; i ++){
+        for(int j = 0; j < 23; j++){
             TX[i][j] = -1;
         }
     }
@@ -58,7 +58,7 @@ tableLexerReturn NextWord(vector<char> input){
     TX[2][10] = 3;
     TX[3][10] = 3;
     TX[0][2] = 4;
-    for(int j = 0; j < 22; j++){
+    for(int j = 0; j < 23; j++){
             TX[4][j] = 4;
     }
     TX[4][2] = 5;
@@ -79,9 +79,10 @@ tableLexerReturn NextWord(vector<char> input){
     TX[0][6] = 18;
     TX[0][9] = 19;
     TX[19][9] = 27;
-    for(int j = 0; j < 22; j++){
+    for(int j = 0; j < 23; j++){
             TX[27][j] = 27;
     }
+    TX[27][22] = -1;
     TX[0][12] = 20;
     TX[0][11] = 21;
     TX[0][18] = 22;
@@ -90,15 +91,21 @@ tableLexerReturn NextWord(vector<char> input){
     TX[0][1] = 25;
     TX[25][14] = 26;
     TX[19][5] = 28;
-    TX[28][16] = 31;
-    TX[31][16] = 31;
-    TX[31][5] = 32;
-    TX[32][16] = 31;
-    TX[32][9] = 33;
+    for(int j = 0; j < 23; j++){
+            TX[28][j] = 28;
+    }
+     for(int j = 0; j < 23; j++){
+            TX[31][j] = 28;
+    }
+    TX[28][5] = 31;
+    TX[31][9] = 32;
     TX[0][17] = 29;
     TX[29][17] = 30;
     TX[30][16] = 30;
-    TX[0][21] = 34;
+    TX[0][21] = 33;
+    TX[0][22] = 33;
+    TX[27][22] = -1;
+    TX[27][21] = 27;
     // Initialisation
     int state = 0;
     string lexeme = "";
@@ -131,11 +138,13 @@ tableLexerReturn NextWord(vector<char> input){
     }
     stack.push(state);
     // Rollback Loop
-    while (!(std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa)) || state == 100){
+    bool exists = (std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa));
+    while ( exists == false && state != 100){
         // method to safely pop in c++
         stack.pop();
         lexeme.pop_back();
         state = stack.top();
+        exists = (std::find(std::begin(Sa), std::end(Sa), state) != std::end(Sa));
     }
 
     
@@ -158,35 +167,37 @@ int main(){
     tableLexerReturn ReturnHold;
     vector<string> tokens; 
     vector<int> stateType;
-    
+    vector<char> fileVector; 
+    size_t notEOF = 0;
     
     if (myfile.is_open())
     {
         while ( getline (myfile,line) )
         {                          
-            vector<char> fileVector; 
-            size_t notEOF = 0;
+            
             for (size_t i = 0; i < line.length(); i++){
                 fileVector.push_back(line[i]);
             }
-
-            //print vector as string
-            std::string s(fileVector.begin(), fileVector.end());
-            std::cout << s <<"\n";
-            while (notEOF != fileVector.size()){
-                
-                ReturnHold = NextWord(fileVector);
-                tokens.push_back(ReturnHold.lexemeFin);
-                stateType.push_back(ReturnHold.stackTop);
-                notEOF += ReturnHold.counter;
-                notEOF -= 1;
-                NextChar(fileVector, -1);
-            }
-            NextChar(fileVector, 0);
+            fileVector.push_back('\n');
         }
         myfile.close();
+        //print vector as string
+        // std::string s(fileVector.begin(), fileVector.end());
+        // std::cout << s <<"\n";
+        while (notEOF != fileVector.size()){
+            
+            ReturnHold = NextWord(fileVector);
+            tokens.push_back(ReturnHold.lexemeFin);
+            stateType.push_back(ReturnHold.stackTop);
+            notEOF += ReturnHold.counter;
+            notEOF -= 1;
+            NextChar(fileVector, -1);
+        }
+        // NextChar(fileVector, 0);
     }
+    
 }
+
 
 // NextWord() {
 //  state = SO; 
