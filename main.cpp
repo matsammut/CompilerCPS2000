@@ -17,6 +17,8 @@ class tableLexerReturn {       // The class
 
 class FACTOR;
 
+class BLOCK;
+
 class IDENTIFIER;
 
 class TERM{
@@ -76,6 +78,26 @@ class PS : public Statement{
         EXPR* express;
 };
 
+class IS : public Statement{
+    public:
+        virtual ~IS() = default;
+        bool iF;
+        bool lBrac;
+        EXPR* express;
+        bool rBrac;
+        BLOCK* blk;
+        vector<bool> elSe;
+        vector<BLOCK*> blks; 
+};
+
+class BLOCK{
+    public:
+        virtual ~BLOCK() = default;
+        bool lBrac;
+        vector<Statement*> stmts;
+        bool rBrac;
+};
+
 //skip FACTOR go straight to options
 class FACTOR {
     public:
@@ -89,7 +111,6 @@ class IDENTIFIER : public FACTOR{
         string iden;
 };
 
-//
 class LITERAL : public FACTOR{
     public:
         virtual ~LITERAL() = default;
@@ -142,6 +163,7 @@ classif CharCat(char character){
 }
 
 FACTOR* factor(vector<char> fileVector);
+BLOCK* block(vector<char> fileVector);
 
 tableLexerReturn NextWord(vector<char> input){
     // token type
@@ -646,7 +668,6 @@ string type(vector<char> fileVector){
     }
 }
 
-
 // tested w bf until expression everything until expression gets initilised correctly and memory address is returned
 Statement* variableDecl(vector<char> fileVector){
 
@@ -756,6 +777,54 @@ Statement* printStatement(vector<char> fileVector){
     return returnPS;
 }
 
+Statement* ifStatement(vector<char> fileVector){
+    IS* returnIs = new IS();
+    tableLexerReturn nextToken;
+    
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "if"){
+        returnIs->iF = true;
+    }
+    else{
+        returnIs->iF = false;
+        cout << "ERROR EXPECTED IF FOR IF STATEMENT";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 7){
+        returnIs->lBrac = true;
+    }
+    else{
+        returnIs->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR IF STATEMENT";
+        exit(0);
+    }
+
+    returnIs->express = expression(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 12){
+        returnIs->rBrac = true;
+    }
+    else{
+        returnIs->rBrac = false;
+        cout << "ERROR EXPECTED RIGHT BRACKET FOR IF STATEMENT";
+        exit(0);
+    }
+
+    returnIs->blk = block(fileVector);
+}
+
 // convert memory address stored in AST back to variableDEC to check if output is printable
 int parser(vector<char> fileVector){
     // a program is a Vector of Statements
@@ -765,11 +834,11 @@ int parser(vector<char> fileVector){
 
     for(;;){
         do{
-        nextToken = getNextToken(fileVector, true);
-        if (nextToken.stackTop == 33){
-            nextToken = getNextToken(fileVector, false);
-        }
-    }while(nextToken.stackTop == 33);
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
+        }while(nextToken.stackTop == 33);
         // Statement returnStatement;
         if (nextToken.stackTop == -100){
             break;
@@ -818,7 +887,7 @@ int parser(vector<char> fileVector){
 
         }
         else if (nextToken.lexemeFin == "if"){
-            
+            AST->push_back(ifStatement(fileVector));
         }
         else if (nextToken.lexemeFin == "for"){
             
@@ -858,6 +927,47 @@ int parser(vector<char> fileVector){
     }
     
     return 0;
+}
+
+// should be a copy of parser
+Statement* statement(vector<char> fileVector){
+    Statement* returnStatement = new Statement();
+    return returnStatement;
+}
+
+BLOCK* block(vector<char> fileVector){
+    BLOCK* returnBlock = new BLOCK();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 22){
+        returnBlock->lBrac = true;
+    }
+    else{
+        returnBlock->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR BLOCK";
+        exit(0);
+    }
+
+    returnBlock->stmts.push_back(statement(fileVector));
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 23){
+        returnBlock->rBrac = true;
+    }
+    else{
+        returnBlock->rBrac = false;
+        cout << "ERROR EXPECTED RIGHT BRACKET FOR BLOCK";
+        exit(0);
+    }
+
+    return returnBlock;
 }
 
 int main(){
