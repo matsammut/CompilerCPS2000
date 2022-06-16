@@ -15,27 +15,104 @@ class tableLexerReturn {       // The class
     int counter;
 };
 
+class FACTOR;
+
+class IDENTIFIER;
+
+class TERM{
+    public:
+        virtual ~TERM() = default;
+        FACTOR* lFac;
+        vector<string> mulOP;
+        vector<FACTOR*> rFac;
+};
+
+class SIEXPR{
+    public:
+        virtual ~SIEXPR() = default;
+        TERM* trm;
+        vector<string> addOP;
+        vector<TERM*> rTrm;
+};
 
 class Statement{
     public:
-
+        virtual ~Statement() = default;
 };
 
+class EXPR{
+    public:
+        virtual ~EXPR() = default;
+        SIEXPR* lExpres;
+        vector<string> relOP;
+        vector<SIEXPR*> rExpres;
+};
 
 class VD : public Statement{
     public:
+        virtual ~VD() = default;
         bool let;
         // identifiers are strings
-        string iden;
+        IDENTIFIER* iden;
         bool colin;
         // types are 4 different strings
         string typ;
         bool equals;
-        //EXPR express;
+        EXPR* express;
 };
 
-class EXPR{
+class AS : public Statement{
+    public:
+        virtual ~AS() = default;
+        string iden;
+        bool equals;
+        EXPR* express;
+};
 
+class PS : public Statement{
+    public:
+        virtual ~PS() = default;
+        bool prinT;
+        EXPR* express;
+};
+
+//skip FACTOR go straight to options
+class FACTOR {
+    public:
+        virtual ~FACTOR() = default;
+};
+
+// can prob remove
+class IDENTIFIER : public FACTOR{
+    public:
+        virtual ~IDENTIFIER() = default;
+        string iden;
+};
+
+//
+class LITERAL : public FACTOR{
+    public:
+        virtual ~LITERAL() = default;
+        // string will hold BOOL or INT or FLOAT or CHAR to show which literal it is
+        string literalType;
+        string contentsType;
+};
+
+class FUNCTIONCALL : public FACTOR{
+    public:
+        virtual ~FUNCTIONCALL() = default;
+        IDENTIFIER* iden;
+        bool lBrac;
+        // add one or more acutal params
+        bool rBrac;
+};
+
+class SUBEXPRESSION : public FACTOR{
+    public:
+        virtual ~SUBEXPRESSION() = default;
+        bool lBrac;
+        EXPR* expression;
+        bool rBrac;
 };
 
 
@@ -63,6 +140,8 @@ classif CharCat(char character){
     
     return CAT[asciiIndex];
 }
+
+FACTOR* factor(vector<char> fileVector);
 
 tableLexerReturn NextWord(vector<char> input){
     // token type
@@ -214,100 +293,241 @@ tableLexerReturn getNextToken(vector<char> fileVector, bool lookahead){
 
 }
 
-
-
-int functionCall(vector<char> fileVector){
-    vector<string> returnVec;
+// Done just test
+// implementation should mirror Multiplicitive
+string additiveOp(vector<char> fileVector){
     tableLexerReturn nextToken;
-    nextToken = getNextToken(fileVector, false);
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == "+" || nextToken.lexemeFin == "-" || nextToken.lexemeFin == "or" ){
+        return nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR EXPECTED ADDITIVE OPERATOR";
+        exit(0);
+    }
+}
+
+// Done just test
+// implementation should mirror Additive
+string multiplicaticveOp(vector<char> fileVector){
+    tableLexerReturn nextToken;
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == "*" || nextToken.lexemeFin == "/" || nextToken.lexemeFin == "and" ){
+        return nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR EXPECTED MULTIPLICATION OPERATOR";
+        exit(0);
+    }
+}
+
+// Done just test
+// implementation should mirror Additive
+string relationalOp(vector<char> fileVector){
+    tableLexerReturn nextToken;
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == ">" || nextToken.lexemeFin == "<" || nextToken.lexemeFin == "==" || nextToken.lexemeFin == "<=" || nextToken.lexemeFin == ">=" || nextToken.lexemeFin == "!=" ){
+        return nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR EXPECTED RELATIONAL OPERATOR";
+        exit(0);
+    }
+}
+
+// Done just add Actual Params and test
+FUNCTIONCALL* functionCall(vector<char> fileVector){
+    tableLexerReturn nextToken;
+    FUNCTIONCALL* returnFC = new FUNCTIONCALL();
+    
+    // do{
+    //     nextToken = getNextToken(fileVector, false);
+    // }while(nextToken.stackTop == 33);
+
+    // if (nextToken.stackTop == 6){
+    //     // identifier
+    //     returnFC->iden = nextToken.lexemeFin;
+    // }
+    // else{
+    //     cout << "ERROR EXPECTED IDENTIFIER FOR FUNCTIONCALL";
+    //     exit(0);
+    // } 
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
 
     // left Bracket
     if (nextToken.stackTop == 7){
-
+        returnFC->lBrac = true;
     }
     else{
-        cout << "ERROR EXPECTED LEFT BRACKET FOR SUB EXPRESSION";
+        returnFC->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR FUNCTIONCALL";
         exit(0);
     }
 
+    // TODO
     // need method to have multiple params
 
     // right Bracket
     if (nextToken.stackTop == 12){
-
+        returnFC->rBrac = true;
     }
     else{
-        cout << "ERROR EXPECTED RIGHT BRACKET FOR SUB EXPRESSION";
+        returnFC->rBrac = false;
+        cout << "ERROR EXPECTED RIGHT BRACKET FOR FUNCTIONCALL";
         exit(0);
     }
-    return 0;
 
-    return 0;
+    return returnFC;
 }
 
+// Done just test
+// implementation should mirror Simple Example and Expression
+TERM* term(vector<char> fileVector){
+    tableLexerReturn nextToken;
+    TERM* returnTRM = new TERM();
 
-int term(vector<char> fileVector){
-    //make a vector to return the finished statement
-    vector<string> returnVec;
-    // factor(fileVector);
-    return 0;
+
+    returnTRM->lFac = factor(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+    }while(nextToken.stackTop == 33);
+
+    while (nextToken.lexemeFin == "+" || nextToken.lexemeFin == "-" || nextToken.lexemeFin == "or" ){
+        returnTRM->mulOP.push_back(multiplicaticveOp(fileVector));
+        returnTRM->rFac.push_back(factor(fileVector));
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+    }
+
+    return returnTRM;
 }
 
-int simpleExpr(vector<char> fileVector){
+// Done just test
+// implementation should mirror Term and Expression
+SIEXPR* simpleExpr(vector<char> fileVector){
     //make a vector to return the finished statement
-    vector<string> returnVec;
-    term(fileVector);
-    return 0;
+    SIEXPR* returnSIEXPR = new SIEXPR();
+    returnSIEXPR->trm = term(fileVector);
+
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+    }while(nextToken.stackTop == 33);
+
+    while (nextToken.lexemeFin == "+" || nextToken.lexemeFin == "-" || nextToken.lexemeFin == "or" ){
+        returnSIEXPR->addOP.push_back(additiveOp(fileVector));
+        returnSIEXPR->rTrm.push_back(term(fileVector));
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+    }
+
+    return returnSIEXPR;
 }
 
-
-EXPR expression(vector<char> fileVector){
+// Done just test
+// implementation should mirror Term and Simple Expression
+EXPR* expression(vector<char> fileVector){
     //make a vector to return the finished statement
-    EXPR returnEXPR;
+    EXPR* returnEXPR = new EXPR();
 
-    simpleExpr(fileVector);
+    returnEXPR->lExpres = simpleExpr(fileVector);
+    
+    tableLexerReturn nextToken;
+
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+    }while(nextToken.stackTop == 33);
+
+    while (nextToken.lexemeFin == ">" || nextToken.lexemeFin == "<" || nextToken.lexemeFin == "==" || nextToken.lexemeFin == "<=" || nextToken.lexemeFin == ">=" || nextToken.lexemeFin == "!=" ){
+        returnEXPR->relOP.push_back(relationalOp(fileVector));
+        returnEXPR->rExpres.push_back(simpleExpr(fileVector));
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+    }
+
     return returnEXPR;
 }
 
+// TODO
+// update functioncall when done
 int actualParams(vector<char> fileVector){
     expression(fileVector);
     return 0;
 }
 
-int subExpression(vector<char> fileVector){
-    vector<string> returnVec;
+// Done just Test
+SUBEXPRESSION* subExpression(vector<char> fileVector){
     tableLexerReturn nextToken;
-    nextToken = getNextToken(fileVector, false);
+    SUBEXPRESSION* returnSubExp = new SUBEXPRESSION();
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
 
     // left Bracket
     if (nextToken.stackTop == 7){
-
+        returnSubExp->lBrac = true;
     }
     else{
+        returnSubExp->lBrac = false;
         cout << "ERROR EXPECTED LEFT BRACKET FOR SUB EXPRESSION";
         exit(0);
     }
 
-    expression(fileVector);
+    returnSubExp->expression = expression(fileVector);
+
+    // need method to have multiple params
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
 
     // right Bracket
     if (nextToken.stackTop == 12){
-
+        returnSubExp->rBrac = true;
     }
     else{
+        returnSubExp->rBrac = false;
         cout << "ERROR EXPECTED RIGHT BRACKET FOR SUB EXPRESSION";
         exit(0);
     }
-    return 0;
+
+    return returnSubExp;
+
 }
-string identifier(vector<char> fileVector){
+
+// may need two one for this and a pointer for FACTOR
+// to upcast identifier to factor
+IDENTIFIER* identifier(vector<char> fileVector){
     tableLexerReturn nextToken;
+    IDENTIFIER* returnIDEN = new IDENTIFIER(); 
+
     do{
         nextToken = getNextToken(fileVector, false);
     }while(nextToken.stackTop == 33);
     
     if (nextToken.stackTop == 6){
-        return nextToken.lexemeFin;
+        returnIDEN->iden = nextToken.lexemeFin;
+        return returnIDEN;
     }
     else{
         cout << "ERROR IDENTIFIER INVALID";
@@ -315,34 +535,96 @@ string identifier(vector<char> fileVector){
     }
 }
 
-// int factor(vector<char> fileVector){
-//     //make a vector to return the finished statement
-//     vector<string> returnVec;
-//     tableLexerReturn nextToken;
-//     nextToken = getNextToken(fileVector, true);
-    
-//     if (nextToken.stackTop == 7){
-//         subExpression(fileVector);
-//     }
-//     else if(nextToken.lexemeFin == "float" ||nextToken.lexemeFin == "int" ||nextToken.lexemeFin == "char" ||nextToken.lexemeFin == "bool" || nextToken.lexemeFin == "true" ||nextToken.lexemeFin == "false" || nextToken.stackTop == 1 || nextToken.stackTop == 3){
-//         identifier(fileVector);
-//     }
-//     else if(nextToken.stackTop == 6){
-//         identifier(fileVector);
-//         tableLexerReturn nextTokenisFC;
-//         nextTokenisFC = getNextToken(fileVector, true);
-//         if (nextTokenisFC.stackTop == 7){
-//             // function call
-//             functionCall(fileVector);
-//         }
-//     }
-//     else{
-//         cout << "ERROR FACTOR EXPECTED";
-//         exit(0);
-//     }
-//     return 0;
-// }
+LITERAL* literal(vector<char> fileVector){
+    LITERAL* returnLit = new LITERAL();
 
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if(nextToken.lexemeFin == "float" ||nextToken.lexemeFin == "int" ||nextToken.lexemeFin == "char" ||nextToken.lexemeFin == "bool"){
+        returnLit->literalType = "TYPE";
+        returnLit->contentsType = nextToken.lexemeFin;
+    }
+    else if(nextToken.lexemeFin == "true" ||nextToken.lexemeFin == "false"){
+        returnLit->literalType = "BOOL";
+        returnLit->contentsType = nextToken.lexemeFin;
+    }
+    else if(nextToken.stackTop == 1){
+        returnLit->literalType = "INT";
+        returnLit->contentsType = nextToken.lexemeFin;
+    }
+    else if(nextToken.stackTop == 3){
+        returnLit->literalType = "FLOAT";
+        returnLit->contentsType = nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR EXPECTED LITERAL";
+        exit(0);
+    }
+    return returnLit;
+}
+
+// check problems with Identifier
+// very rough implementation
+// need to see if identifier function is necesary
+FACTOR* factor(vector<char> fileVector){
+
+    FACTOR* returnFac = new FACTOR();
+
+    tableLexerReturn nextToken;
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.stackTop == 7){
+        returnFac = subExpression(fileVector);
+    }
+    // literal
+    else if(nextToken.lexemeFin == "float" ||nextToken.lexemeFin == "int" ||nextToken.lexemeFin == "char" ||nextToken.lexemeFin == "bool" || nextToken.lexemeFin == "true" ||nextToken.lexemeFin == "false" || nextToken.stackTop == 1 || nextToken.stackTop == 3){
+
+        returnFac = literal(fileVector);
+
+    }
+    // identifier
+    else if(nextToken.stackTop == 6){
+        IDENTIFIER* returnIden = identifier(fileVector);
+
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+
+
+        tableLexerReturn nextTokenisFC;
+        do{
+            nextTokenisFC = getNextToken(fileVector, true);
+        }while(nextToken.stackTop == 33);
+
+        // if the next is 7 then it is a function call
+        if (nextTokenisFC.stackTop == 7){
+            // function call
+            FUNCTIONCALL* returnFacCall = functionCall(fileVector);
+            returnFacCall->iden = returnIden;
+            returnFac = returnFacCall;
+        }
+        else{
+            returnFac = returnIden;
+        }
+    }
+    else{
+        cout << "ERROR FACTOR EXPECTED";
+        exit(0);
+    }
+    return returnFac;
+}
+
+// should be done
+//function is basic enough
 string type(vector<char> fileVector){
     tableLexerReturn nextToken;
     nextToken = getNextToken(fileVector, false);
@@ -364,11 +646,13 @@ string type(vector<char> fileVector){
     }
 }
 
+
+// tested w bf until expression everything until expression gets initilised correctly and memory address is returned
 Statement* variableDecl(vector<char> fileVector){
-    //make a vector to return the finished statement
-    VD holdVD;
-    VD* returnVD = &holdVD;
+
+    VD* returnVD = new VD();
     tableLexerReturn nextToken;
+    
     do{
         nextToken = getNextToken(fileVector, false);
     }while(nextToken.stackTop == 33);
@@ -413,10 +697,66 @@ Statement* variableDecl(vector<char> fileVector){
         exit(0);
     }
 
+    
+    returnVD->express = expression(fileVector);
     return returnVD;
-    // expression(fileVector);
 }
 
+Statement* assignment(vector<char> fileVector){
+    AS* returnAS = new AS();
+    tableLexerReturn nextToken;
+    
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 6){
+        returnAS->iden = nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR IDENTIFIER EXPECTED";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == "="){
+        returnAS->equals = true;
+    }
+    else{
+        cout<< "ERROR EXPECTED EQUALS FOR ASSIGNMENT";
+        exit(0);
+    }
+
+    returnAS->express = expression(fileVector);
+    return returnAS;
+
+}
+
+Statement* printStatement(vector<char> fileVector){
+    PS* returnPS = new PS();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "print"){
+        returnPS->prinT = true;
+    }
+    else{
+        returnPS->prinT = false;
+        cout << "ERROR EXPECTED PRINT FOR PRINT STATEMENT";
+        exit(0);
+    }
+
+    returnPS->express = expression(fileVector);
+    return returnPS;
+}
+
+// convert memory address stored in AST back to variableDEC to check if output is printable
 int parser(vector<char> fileVector){
     // a program is a Vector of Statements
     vector<Statement*> *AST = new vector<Statement*>();
@@ -424,7 +764,12 @@ int parser(vector<char> fileVector){
     tableLexerReturn nextToken;
 
     for(;;){
+        do{
         nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
         // Statement returnStatement;
         if (nextToken.stackTop == -100){
             break;
@@ -436,8 +781,17 @@ int parser(vector<char> fileVector){
                 nextToken = getNextToken(fileVector, false);
             }while(nextToken.stackTop == 33);
 
-            Statement* printVD = &AST[0];
-            // cout << AST[0]->iden <<"\n";
+            vector<Statement*>::iterator iter;
+            for (iter = AST->begin(); iter != AST->end(); ++iter){
+                // prints out memory location
+                // cout << *iter;
+                VD* printVD = dynamic_cast<VD*>(*iter);
+                cout << printVD->typ << "\n";
+
+                IDENTIFIER* printIden = printVD->iden;
+                cout << printIden->iden <<"\n";
+            }
+
             if (nextToken.stackTop == 20){
                 
             }
@@ -447,7 +801,18 @@ int parser(vector<char> fileVector){
             }
         }
         else if (nextToken.lexemeFin == "print"){
+            AST->push_back(printStatement(fileVector));
+            do{
+                nextToken = getNextToken(fileVector, false);
+            }while(nextToken.stackTop == 33);
 
+            if (nextToken.stackTop == 20){
+                
+            }
+            else{
+                cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+                exit(0);
+            }
         }
         else if (nextToken.lexemeFin == "return"){
 
@@ -464,8 +829,28 @@ int parser(vector<char> fileVector){
         else if (nextToken.lexemeFin == "fn"){
             
         }
+        // block
         else if (nextToken.stackTop == 22){
             
+        }
+        else if (nextToken.stackTop == 6){
+
+            AST->push_back(assignment(fileVector));
+            do{
+                nextToken = getNextToken(fileVector, false);
+            }while(nextToken.stackTop == 33);
+
+            if (nextToken.stackTop == 20){
+                
+            }
+            else{
+                cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+                exit(0);
+            }
+        }
+        else{
+            cout << "ERROR EXPECTED STATEMENT";
+            exit(0);
         }
         // add assignment
                
@@ -503,63 +888,3 @@ int main(){
     }
     
 }
-
-
-// NextWord() {
-//  state = SO; 
-// lexeme = "";
-//  stack.clear0;
-//  stack.push(bad);
-//  } 
-
-// Scanning Loop 
-// while(state!=Se) NextChar(&char);
-//  lexeme += char; 
-// if (state in Sa) stack.clear();
-//  stack.push(state);
-//  cat = CharCat(char);
-//  state = TX[state,cat]; 
-// } 
-
-// Rollback Loop 
-// while( state!=Sa && state!=bad) { 
-// state = stack.popl);
-//  truncate lexeme; 
-// }
-
-
-// Report result 
-// if(state in Sa) {
-//  return Type[state]; 
-// else return invalid; 
-// }
-
-// if (newState.stateNo == 1){
-//             newState.name = "IntegerLiteral";
-//             newState.value = nextToken.lexemeFin;
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 3){
-//             newState.name = "FloatLiteral";
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 5){
-//             newState.name = "CharLiteral";
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 6){
-//             newState.name = "Identifier";
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 17 || newState.stateNo == 19){
-//             newState.name = "MultiplicativeOp";
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 18 || newState.stateNo == 15){
-//             newState.name = "AdditiveOp";
-//             AST.push_back(newState);
-//         }
-//         else if (newState.stateNo == 14 || newState.stateNo == 8|| newState.stateNo == 9 || newState.stateNo == 10|| newState.stateNo == 11|| newState.stateNo == 26){
-//             newState.name = "RelationalOp";
-//             AST.push_back(newState);
-//         }
