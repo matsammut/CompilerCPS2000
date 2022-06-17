@@ -63,6 +63,12 @@ class VD : public Statement{
         EXPR* express;
 };
 
+class INVALIDST : public Statement{
+    public:
+        virtual ~INVALIDST() = default;
+        bool error;
+};
+
 class AS : public Statement{
     public:
         virtual ~AS() = default;
@@ -90,7 +96,7 @@ class IS : public Statement{
         vector<BLOCK*> blks; 
 };
 
-class BLOCK{
+class BLOCK : public Statement{
     public:
         virtual ~BLOCK() = default;
         bool lBrac;
@@ -98,10 +104,81 @@ class BLOCK{
         bool rBrac;
 };
 
+class RS : public Statement{
+    public:
+        virtual ~RS() = default;
+        bool rtrn;
+        EXPR* express;
+};
+
+class FS : public Statement{
+    public:
+        virtual ~FS() = default;
+        bool fOr;
+        bool lBrac;
+        bool hasVarDec;
+        Statement* varDec;
+        bool semiColA;
+        EXPR* express;
+        bool semiColB;
+        bool hasAssignMNT;
+        Statement* assignMNT;
+        bool rBrac;
+        Statement* blck;
+};
+
+class WS : public Statement{
+    public:
+        virtual ~WS() = default;
+        bool whl;
+        bool lBrac;
+        EXPR* express;
+        bool rBrac;
+        Statement* blck;
+};
+
 //skip FACTOR go straight to options
 class FACTOR {
     public:
         virtual ~FACTOR() = default;
+};
+
+class ACTUALPARAMS{
+    public:
+        virtual ~ACTUALPARAMS() = default;
+        EXPR* express;
+        bool hasMoreEXPR;
+        vector<EXPR*> moreEXPR;
+};
+
+class FORMALPARAM{
+    public:
+        virtual ~FORMALPARAM() = default;
+        IDENTIFIER* iden;
+        bool colin;
+        string typ;
+};
+
+class FORMALPARAMS{
+    public:
+        virtual ~FORMALPARAMS() = default;
+        FORMALPARAM* fmlprms;
+        bool hasMorePRMS;
+        vector<FORMALPARAM*> morePRMS;
+};
+
+class FD : public Statement{
+    public:
+        virtual ~FD() = default; 
+        bool fn;
+        IDENTIFIER* iden;
+        bool lBrac;
+        bool hasFParams;
+        FORMALPARAMS* FParams;
+        bool rBrac;
+        string arrow;
+        string typ;
+        Statement* blck;
 };
 
 // can prob remove
@@ -124,7 +201,8 @@ class FUNCTIONCALL : public FACTOR{
         virtual ~FUNCTIONCALL() = default;
         IDENTIFIER* iden;
         bool lBrac;
-        // add one or more acutal params
+        bool hasAct;
+        ACTUALPARAMS* act;
         bool rBrac;
 };
 
@@ -164,6 +242,7 @@ classif CharCat(char character){
 
 FACTOR* factor(vector<char> fileVector);
 BLOCK* block(vector<char> fileVector);
+ACTUALPARAMS* actualParams(vector<char> fileVector);
 
 tableLexerReturn NextWord(vector<char> input){
     // token type
@@ -200,7 +279,7 @@ tableLexerReturn NextWord(vector<char> input){
     TX[0][14] = 13;
     TX[13][14] = 14;
     TX[0][7] = 15;
-    TX[15][13] = 16;
+    TX[15][15] = 16;
     TX[0][5] = 17;
     TX[0][6] = 18;
     TX[0][9] = 19;
@@ -370,19 +449,6 @@ string relationalOp(vector<char> fileVector){
 FUNCTIONCALL* functionCall(vector<char> fileVector){
     tableLexerReturn nextToken;
     FUNCTIONCALL* returnFC = new FUNCTIONCALL();
-    
-    // do{
-    //     nextToken = getNextToken(fileVector, false);
-    // }while(nextToken.stackTop == 33);
-
-    // if (nextToken.stackTop == 6){
-    //     // identifier
-    //     returnFC->iden = nextToken.lexemeFin;
-    // }
-    // else{
-    //     cout << "ERROR EXPECTED IDENTIFIER FOR FUNCTIONCALL";
-    //     exit(0);
-    // } 
 
     do{
         nextToken = getNextToken(fileVector, false);
@@ -398,17 +464,34 @@ FUNCTIONCALL* functionCall(vector<char> fileVector){
         exit(0);
     }
 
-    // TODO
-    // need method to have multiple params
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
 
     // right Bracket
     if (nextToken.stackTop == 12){
         returnFC->rBrac = true;
+        returnFC->hasAct = false;
     }
     else{
-        returnFC->rBrac = false;
-        cout << "ERROR EXPECTED RIGHT BRACKET FOR FUNCTIONCALL";
-        exit(0);
+        returnFC->hasAct = true;
+        returnFC->act = actualParams(fileVector);
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+        if (nextToken.stackTop == 12){
+            returnFC->rBrac = true;
+        }
+        else{
+            returnFC->rBrac = false;
+            cout << "ERROR EXPECTED RIGHT BRACKET FOR FUNCTIONCALL";
+            exit(0);
+        }
+        
     }
 
     return returnFC;
@@ -425,13 +508,19 @@ TERM* term(vector<char> fileVector){
 
     do{
         nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
     }while(nextToken.stackTop == 33);
 
-    while (nextToken.lexemeFin == "+" || nextToken.lexemeFin == "-" || nextToken.lexemeFin == "or" ){
+    if (nextToken.lexemeFin == "*" || nextToken.lexemeFin == "/" || nextToken.lexemeFin == "and" ){
         returnTRM->mulOP.push_back(multiplicaticveOp(fileVector));
         returnTRM->rFac.push_back(factor(fileVector));
         do{
-            nextToken = getNextToken(fileVector, false);
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
         }while(nextToken.stackTop == 33);
     }
 
@@ -449,13 +538,19 @@ SIEXPR* simpleExpr(vector<char> fileVector){
 
     do{
         nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
     }while(nextToken.stackTop == 33);
 
     while (nextToken.lexemeFin == "+" || nextToken.lexemeFin == "-" || nextToken.lexemeFin == "or" ){
         returnSIEXPR->addOP.push_back(additiveOp(fileVector));
         returnSIEXPR->rTrm.push_back(term(fileVector));
         do{
-        nextToken = getNextToken(fileVector, false);
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
         }while(nextToken.stackTop == 33);
     }
 
@@ -475,13 +570,20 @@ EXPR* expression(vector<char> fileVector){
 
     do{
         nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
     }while(nextToken.stackTop == 33);
 
     while (nextToken.lexemeFin == ">" || nextToken.lexemeFin == "<" || nextToken.lexemeFin == "==" || nextToken.lexemeFin == "<=" || nextToken.lexemeFin == ">=" || nextToken.lexemeFin == "!=" ){
+
         returnEXPR->relOP.push_back(relationalOp(fileVector));
         returnEXPR->rExpres.push_back(simpleExpr(fileVector));
         do{
-            nextToken = getNextToken(fileVector, false);
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
         }while(nextToken.stackTop == 33);
     }
 
@@ -490,8 +592,32 @@ EXPR* expression(vector<char> fileVector){
 
 // TODO
 // update functioncall when done
-int actualParams(vector<char> fileVector){
-    expression(fileVector);
+ACTUALPARAMS* actualParams(vector<char> fileVector){
+    ACTUALPARAMS* returnAP = new ACTUALPARAMS();
+
+
+    returnAP->express = expression(fileVector);
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
+    while (nextToken.stackTop == 24){
+        nextToken = getNextToken(fileVector, false);
+        returnAP->hasMoreEXPR = true;
+        returnAP->moreEXPR.push_back(expression(fileVector));
+        do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+    }
+    
     return 0;
 }
 
@@ -617,18 +743,20 @@ FACTOR* factor(vector<char> fileVector){
     else if(nextToken.stackTop == 6){
         IDENTIFIER* returnIden = identifier(fileVector);
 
+        // do{
+        // nextToken = getNextToken(fileVector, false);
+        // }while(nextToken.stackTop == 33);
+
+
+        // tableLexerReturn nextToken;
         do{
-        nextToken = getNextToken(fileVector, false);
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
         }while(nextToken.stackTop == 33);
-
-
-        tableLexerReturn nextTokenisFC;
-        do{
-            nextTokenisFC = getNextToken(fileVector, true);
-        }while(nextToken.stackTop == 33);
-
         // if the next is 7 then it is a function call
-        if (nextTokenisFC.stackTop == 7){
+        if (nextToken.stackTop == 7){
             // function call
             FUNCTIONCALL* returnFacCall = functionCall(fileVector);
             returnFacCall->iden = returnIden;
@@ -666,6 +794,160 @@ string type(vector<char> fileVector){
         cout << "ERROR TYPE EXPECTED";
         exit(0);
     }
+}
+
+FORMALPARAM* formalparam(vector<char> fileVector){
+    FORMALPARAM* returnFP = new FORMALPARAM();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
+    returnFP->iden = identifier(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 21){
+        returnFP->colin = true;
+    }
+    else{
+        returnFP->colin = false;
+        cout << "ERROR EXPECTED COLIN FOR FORMAL PARAMETERS";
+        exit(0);
+    }
+
+    returnFP->typ = type(fileVector);
+
+    return returnFP;
+}
+
+FORMALPARAMS* formalparams(vector<char> fileVector){
+    FORMALPARAMS* returnFPS = new FORMALPARAMS();
+    tableLexerReturn nextToken;
+
+    returnFPS->fmlprms = formalparam(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
+    while (nextToken.stackTop == 24){
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+        returnFPS->hasMorePRMS = true;
+        returnFPS->morePRMS.push_back(formalparam(fileVector));
+        do{
+            nextToken = getNextToken(fileVector, true);
+            if (nextToken.stackTop == 33){
+                nextToken = getNextToken(fileVector, false);
+            }
+        }while(nextToken.stackTop == 33);
+    }
+
+    return returnFPS;
+}
+
+Statement* functionDecl(vector<char> fileVector){
+    FD* returnFD = new FD();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "fn"){
+        returnFD->fn = true;
+    }
+    else{
+        returnFD->fn = false;
+        cout << "ERROR EXPECTED FN FOR FUNCTION DECLERATION";
+        exit(0);
+    }
+
+    returnFD->iden = identifier(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    // left Bracket
+    if (nextToken.stackTop == 7){
+        returnFD->lBrac = true;
+    }
+    else{
+        returnFD->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR FUNCTIONCALL";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
+
+    // right Bracket
+    if (nextToken.stackTop == 12){
+        returnFD->rBrac = true;
+        returnFD->hasFParams = false;
+    }
+    else{
+        returnFD->hasFParams = true;
+        returnFD->FParams = formalparams(fileVector);
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+        if (nextToken.stackTop == 12){
+            returnFD->rBrac = true;
+        }
+        else{
+            returnFD->rBrac = false;
+            cout << "ERROR EXPECTED RIGHT BRACKET FOR FUNCTIONCALL";
+            exit(0);
+        }
+        
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.stackTop == 16){
+        returnFD->arrow = true;
+    }
+    else{
+        cout << "ERROR EXPECTED -> FOR FUNCTION DECLERATION";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == "float" || nextToken.lexemeFin == "int" || nextToken.lexemeFin == "bool" || nextToken.lexemeFin == "char"){
+        returnFD->typ = nextToken.lexemeFin;
+    }
+    else{
+        cout << "ERROR EXPECTED TYPE";
+        exit(0);
+    }
+
+    returnFD->blck = block(fileVector);
+
+    return returnFD;
+
 }
 
 // tested w bf until expression everything until expression gets initilised correctly and memory address is returned
@@ -714,7 +996,7 @@ Statement* variableDecl(vector<char> fileVector){
        returnVD->equals = true;
     }
     else{
-        cout << "ERROR COLIN EXPECTED FOR VARIABLE DECLERATION";
+        cout << "ERROR EQUALS EXPECTED FOR VARIABLE DECLERATION";
         exit(0);
     }
 
@@ -823,10 +1105,179 @@ Statement* ifStatement(vector<char> fileVector){
     }
 
     returnIs->blk = block(fileVector);
+    return returnIs;
+}
+
+Statement* rtrnStatement(vector<char> fileVector){
+    RS* returnRS = new RS();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "return"){
+        returnRS->rtrn = true;
+    }
+    else{
+        returnRS->rtrn = false;
+        cout << "ERROR EXPECTED RETURN FOR RETURN STATEMENT";
+        exit(0);
+    }
+
+    returnRS->express = expression(fileVector);
+    return returnRS;
+}
+
+Statement* forStatement(vector<char> fileVector){
+    FS* returnFS = new FS();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "for"){
+        returnFS->fOr = true;
+    }
+    else{
+        returnFS->fOr = false;
+        cout << "ERROR EXPECTED FOR FOR FOR STATEMENT";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    // left Bracket
+    if (nextToken.stackTop == 7){
+        returnFS->lBrac = true;
+    }
+    else{
+        returnFS->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR FOR STATEMENT";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if(nextToken.stackTop != 20){
+        returnFS->hasVarDec = true;
+        returnFS->varDec = variableDecl(fileVector);
+
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+        if(nextToken.stackTop == 20){
+            returnFS->semiColA = true;
+        }
+        else{
+            cout << "ERROR EXPECTED SEMICOLIN FOR FOR STATEMENT";
+            exit(0);
+        }
+    }
+    else{
+        returnFS->hasVarDec = false;
+        returnFS->semiColA = true;
+    }
+
+    returnFS->express = expression(fileVector);
+
+    if(nextToken.stackTop == 20){
+        returnFS->semiColB = true;
+    }
+    else{
+        returnFS->semiColB = false;
+        cout << "ERROR EXPECTED SEMICOLIN FOR FOR STATEMENT";
+        exit(0);
+    }
+
+    // check if closing bracket or assignment
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    if(nextToken.stackTop != 12){
+        returnFS->hasAssignMNT = true;
+        returnFS->assignMNT = assignment(fileVector);
+
+        do{
+        nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+        if(nextToken.stackTop == 12){
+            returnFS->rBrac = true;
+        }
+        else{
+            cout << "ERROR EXPECTED RIGHT BRACKET FOR FOR STATEMENT";
+            exit(0);
+        }
+    }
+    else{
+        returnFS->hasAssignMNT = false;
+        returnFS->rBrac = true;
+    }
+
+    returnFS->blck = block(fileVector);
+    return returnFS;
+}
+
+Statement* whileStatement(vector<char> fileVector){
+    WS* returnWS = new WS();
+    tableLexerReturn nextToken;
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+    
+    if (nextToken.lexemeFin == "while"){
+        returnWS->whl = true;
+    }
+    else{
+        returnWS->whl = false;
+        cout << "ERROR EXPECTED WHILE FOR WHILE STATEMENT";
+        exit(0);
+    }
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    // left Bracket
+    if (nextToken.stackTop == 7){
+        returnWS->lBrac = true;
+    }
+    else{
+        returnWS->lBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR WHILE STATEMENT";
+        exit(0);
+    }
+
+    returnWS->express = expression(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, false);
+    }while(nextToken.stackTop == 33);
+
+    // left Bracket
+    if (nextToken.stackTop == 12){
+        returnWS->rBrac = true;
+    }
+    else{
+        returnWS->rBrac = false;
+        cout << "ERROR EXPECTED LEFT BRACKET FOR WHILE STATEMENT";
+        exit(0);
+    }
+
+    returnWS->blck = block(fileVector);
+    return returnWS;
 }
 
 // convert memory address stored in AST back to variableDEC to check if output is printable
-int parser(vector<char> fileVector){
+vector<Statement*>* parser(vector<char> fileVector){
     // a program is a Vector of Statements
     vector<Statement*> *AST = new vector<Statement*>();
     // vector<Statement*> AST = {};
@@ -835,12 +1286,13 @@ int parser(vector<char> fileVector){
     for(;;){
         do{
             nextToken = getNextToken(fileVector, true);
-            if (nextToken.stackTop == 33){
+            if (nextToken.stackTop == 33 || nextToken.stackTop == 30 || nextToken.stackTop == 27 || nextToken.stackTop == 32){
                 nextToken = getNextToken(fileVector, false);
             }
-        }while(nextToken.stackTop == 33);
+        }while(nextToken.stackTop == 33 || nextToken.stackTop == 30 || nextToken.stackTop == 27 || nextToken.stackTop == 32);
         // Statement returnStatement;
         if (nextToken.stackTop == -100){
+            cout <<  "\nParsing completed";
             break;
         }
         if (nextToken.lexemeFin == "let"){
@@ -850,16 +1302,16 @@ int parser(vector<char> fileVector){
                 nextToken = getNextToken(fileVector, false);
             }while(nextToken.stackTop == 33);
 
-            vector<Statement*>::iterator iter;
-            for (iter = AST->begin(); iter != AST->end(); ++iter){
-                // prints out memory location
-                // cout << *iter;
-                VD* printVD = dynamic_cast<VD*>(*iter);
-                cout << printVD->typ << "\n";
+            // vector<Statement*>::iterator iter;
+            // for (iter = AST->begin(); iter != AST->end(); ++iter){
+            //     // prints out memory location
+            //     // cout << *iter;
+            //     VD* printVD = dynamic_cast<VD*>(*iter);
+            //     cout << printVD->typ << "\n";
 
-                IDENTIFIER* printIden = printVD->iden;
-                cout << printIden->iden <<"\n";
-            }
+            //     IDENTIFIER* printIden = printVD->iden;
+            //     cout << printIden->iden <<"\n";
+            // }
 
             if (nextToken.stackTop == 20){
                 
@@ -884,23 +1336,35 @@ int parser(vector<char> fileVector){
             }
         }
         else if (nextToken.lexemeFin == "return"){
+            AST->push_back(rtrnStatement(fileVector));
 
+            do{
+                nextToken = getNextToken(fileVector, false);
+            }while(nextToken.stackTop == 33);
+
+            if (nextToken.stackTop == 20){
+                
+            }
+            else{
+                cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+                exit(0);
+            }
         }
         else if (nextToken.lexemeFin == "if"){
             AST->push_back(ifStatement(fileVector));
         }
         else if (nextToken.lexemeFin == "for"){
-            
+            AST->push_back(forStatement(fileVector));
         }
         else if (nextToken.lexemeFin == "while"){
-            
+            AST->push_back(whileStatement(fileVector));
         }
         else if (nextToken.lexemeFin == "fn"){
-            
+            AST->push_back(functionDecl(fileVector));
         }
         // block
         else if (nextToken.stackTop == 22){
-            
+            AST->push_back(block(fileVector));
         }
         else if (nextToken.stackTop == 6){
 
@@ -926,13 +1390,121 @@ int parser(vector<char> fileVector){
         // AST->push_back(returnStatement);
     }
     
-    return 0;
+    return AST;
 }
 
 // should be a copy of parser
 Statement* statement(vector<char> fileVector){
     Statement* returnStatement = new Statement();
-    return returnStatement;
+    tableLexerReturn nextToken;
+    
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33 || nextToken.stackTop == 30 || nextToken.stackTop == 27 || nextToken.stackTop == 32){
+            nextToken = getNextToken(fileVector, false);
+        }
+
+    }while(nextToken.stackTop == 33 || nextToken.stackTop == 30 || nextToken.stackTop == 27 || nextToken.stackTop == 32);
+    // Statement returnStatement;
+    if (nextToken.stackTop == 23){
+        INVALIDST* invalidR = new INVALIDST();
+        invalidR->error = true;
+        returnStatement = invalidR;
+        return returnStatement;
+    }
+    if (nextToken.lexemeFin == "let"){
+
+        returnStatement = variableDecl(fileVector);
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+
+        if (nextToken.stackTop == 20){
+            
+        }
+        else{
+            cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+            exit(0);
+        }
+
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "print"){
+        returnStatement = printStatement(fileVector);
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+
+        if (nextToken.stackTop == 20){
+            
+        }
+        else{
+            cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+            exit(0);
+        }
+
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "return"){
+        returnStatement = rtrnStatement(fileVector);
+
+        do{
+                nextToken = getNextToken(fileVector, false);
+            }while(nextToken.stackTop == 33);
+
+            if (nextToken.stackTop == 20){
+                
+            }
+            else{
+                cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+                exit(0);
+        }
+
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "if"){
+        returnStatement = ifStatement(fileVector);
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "for"){
+        returnStatement = forStatement(fileVector);
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "while"){
+        returnStatement = whileStatement(fileVector);
+        return returnStatement;
+    }
+    else if (nextToken.lexemeFin == "fn"){
+        returnStatement = functionDecl(fileVector);
+        return returnStatement;
+    }
+    // block
+    else if (nextToken.stackTop == 22){
+        returnStatement = block(fileVector);
+        return returnStatement;
+    }
+    else if (nextToken.stackTop == 6){
+
+        returnStatement = assignment(fileVector);
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
+
+        if (nextToken.stackTop == 20){
+            
+        }
+        else{
+            cout << "ERROR EXPECTED SEMICOLIN EXPECTED";
+            exit(0);
+        }
+
+        return returnStatement;
+    }
+    else{
+        cout << "ERROR EXPECTED STATEMENT";
+        exit(0);
+    }
+
 }
 
 BLOCK* block(vector<char> fileVector){
@@ -952,26 +1524,35 @@ BLOCK* block(vector<char> fileVector){
         exit(0);
     }
 
-    returnBlock->stmts.push_back(statement(fileVector));
-
-    do{
-        nextToken = getNextToken(fileVector, false);
-    }while(nextToken.stackTop == 33);
-
-    if (nextToken.stackTop == 23){
-        returnBlock->rBrac = true;
+    Statement* holdSTMT = new Statement();
+    
+    // closing bracket
+    if (nextToken.stackTop != 23){
+        for(;;){
+            holdSTMT = statement(fileVector);
+            //check if statement was invalid if so than a closing bracket was found
+            if  (dynamic_cast<INVALIDST*>(holdSTMT) == NULL){
+                returnBlock->stmts.push_back(holdSTMT);
+            }
+            // if a closing bracket is found we stop looping
+            else{
+                do{
+                nextToken = getNextToken(fileVector, false);
+                }while(nextToken.stackTop == 33);
+                returnBlock->rBrac = true;
+                break;
+            }
+        }
     }
-    else{
-        returnBlock->rBrac = false;
-        cout << "ERROR EXPECTED RIGHT BRACKET FOR BLOCK";
-        exit(0);
-    }
+
+    returnBlock->rBrac = true;
+  
 
     return returnBlock;
 }
 
 int main(){
-    ifstream myfile("under.txt");
+    ifstream myfile("example.txt");
     string line;
     vector<string> tokens; 
     vector<int> stateType;
@@ -993,8 +1574,8 @@ int main(){
         // std::string s(fileVector.begin(), fileVector.end());
         // std::cout << s <<"\n";
 
-        parser(fileVector);
-        
+        vector<Statement*> *returnAST = parser(fileVector);  
+        cout << returnAST;
     }
     
 }
