@@ -72,7 +72,7 @@ class INVALIDST : public Statement{
 class AS : public Statement{
     public:
         virtual ~AS() = default;
-        string iden;
+        IDENTIFIER* iden;
         bool equals;
         EXPR* express;
 };
@@ -92,8 +92,8 @@ class IS : public Statement{
         EXPR* express;
         bool rBrac;
         BLOCK* blk;
-        vector<bool> elSe;
-        vector<BLOCK*> blks; 
+        bool elSe;
+        BLOCK* blks; 
 };
 
 class BLOCK : public Statement{
@@ -213,7 +213,6 @@ class SUBEXPRESSION : public FACTOR{
         EXPR* expression;
         bool rBrac;
 };
-
 
 char NextChar(vector<char> input,int decrement){
     static int nextcharpointer = -1;
@@ -513,6 +512,7 @@ TERM* term(vector<char> fileVector){
         }
     }while(nextToken.stackTop == 33);
 
+    returnTRM->mulOP = {};
     if (nextToken.lexemeFin == "*" || nextToken.lexemeFin == "/" || nextToken.lexemeFin == "and" ){
         returnTRM->mulOP.push_back(multiplicaticveOp(fileVector));
         returnTRM->rFac.push_back(factor(fileVector));
@@ -618,7 +618,7 @@ ACTUALPARAMS* actualParams(vector<char> fileVector){
     }while(nextToken.stackTop == 33);
     }
     
-    return 0;
+    return returnAP;
 }
 
 // Done just Test
@@ -692,9 +692,15 @@ LITERAL* literal(vector<char> fileVector){
         nextToken = getNextToken(fileVector, false);
     }while(nextToken.stackTop == 33);
 
-    if(nextToken.lexemeFin == "float" ||nextToken.lexemeFin == "int" ||nextToken.lexemeFin == "char" ||nextToken.lexemeFin == "bool"){
-        returnLit->literalType = "TYPE";
+    if(nextToken.stackTop == 5){
+        returnLit->literalType = "CHAR";
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
         returnLit->contentsType = nextToken.lexemeFin;
+        do{
+            nextToken = getNextToken(fileVector, false);
+        }while(nextToken.stackTop == 33);
     }
     else if(nextToken.lexemeFin == "true" ||nextToken.lexemeFin == "false"){
         returnLit->literalType = "BOOL";
@@ -742,11 +748,6 @@ FACTOR* factor(vector<char> fileVector){
     // identifier
     else if(nextToken.stackTop == 6){
         IDENTIFIER* returnIden = identifier(fileVector);
-
-        // do{
-        // nextToken = getNextToken(fileVector, false);
-        // }while(nextToken.stackTop == 33);
-
 
         // tableLexerReturn nextToken;
         do{
@@ -1010,11 +1011,14 @@ Statement* assignment(vector<char> fileVector){
     tableLexerReturn nextToken;
     
     do{
-        nextToken = getNextToken(fileVector, false);
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
     }while(nextToken.stackTop == 33);
 
     if (nextToken.stackTop == 6){
-        returnAS->iden = nextToken.lexemeFin;
+        returnAS->iden = identifier(fileVector);
     }
     else{
         cout << "ERROR IDENTIFIER EXPECTED";
@@ -1105,6 +1109,22 @@ Statement* ifStatement(vector<char> fileVector){
     }
 
     returnIs->blk = block(fileVector);
+
+    do{
+        nextToken = getNextToken(fileVector, true);
+        if (nextToken.stackTop == 33){
+            nextToken = getNextToken(fileVector, false);
+        }
+    }while(nextToken.stackTop == 33);
+
+    if (nextToken.lexemeFin == "else"){
+        nextToken = getNextToken(fileVector, false);
+        returnIs->elSe = true;
+        returnIs->blks = block(fileVector);
+    }
+    else{
+        returnIs->elSe = false;
+    }
     return returnIs;
 }
 
@@ -1551,6 +1571,407 @@ BLOCK* block(vector<char> fileVector){
     return returnBlock;
 }
 
+void printTabs(int indent){
+    for (int i = 0; i < indent; i++){
+        cout << "\t";
+    }
+}
+
+void printEXPR(EXPR* express, int indentAmnt);
+
+int XML(vector<Statement*> *AST, int indentAmnt);
+
+void printIden(IDENTIFIER* ident, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Identifier>\n";
+    printTabs(indentAmnt+1);
+    cout << ident->iden <<"\n";
+    printTabs(indentAmnt);
+    cout << "<\\Identifier>\n";
+}
+
+void printLit(LITERAL* lit, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Literal>\n";
+    if (lit->literalType == "CHAR"){
+        printTabs(indentAmnt+1);
+        cout << "<CharLiteral>\n";
+        printTabs(indentAmnt+2);
+        cout << lit->contentsType<<"\n";
+        printTabs(indentAmnt+1);
+        cout << "<//CharLiteral>\n";
+    }
+    else if (lit->literalType == "BOOL"){
+        printTabs(indentAmnt+1);
+        cout << "<BoolLiteral>\n";
+        printTabs(indentAmnt+2);
+        cout << lit->contentsType<<"\n";
+        printTabs(indentAmnt+1);
+        cout << "<//BoolLiteral>\n";
+    }
+    else if (lit->literalType == "FLOAT"){
+        printTabs(indentAmnt+1);
+        cout << "<FloatLiteral>\n";
+        printTabs(indentAmnt+2);
+        cout << lit->contentsType<<"\n";
+        printTabs(indentAmnt+1);
+        cout << "<//FloatLiteral>\n";
+    }
+    else if (lit->literalType == "INT"){
+        printTabs(indentAmnt+1);
+        cout << "<IntLiteral>\n";
+        printTabs(indentAmnt+2);
+        cout << lit->contentsType<<"\n";
+        printTabs(indentAmnt+1);
+        cout << "<//IntLiteral>\n";
+    }
+    printTabs(indentAmnt);
+    cout << "<\\Literal>\n";
+}
+
+void printSubEXPR(SUBEXPRESSION* subEXPR, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<SubExpression>\n";
+    printEXPR(subEXPR->expression, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\SubExpression>\n";
+}
+
+void printAct(ACTUALPARAMS* act, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<ActualParams>\n";
+    printEXPR(act->express, indentAmnt);
+    
+
+    if(act->hasMoreEXPR == true){
+        vector<EXPR*>::iterator iterAct;
+        for (iterAct = (act->moreEXPR).begin(); iterAct != (act->moreEXPR).end(); ++iterAct){
+            printEXPR(*iterAct, indentAmnt);
+        }
+    }
+    printTabs(indentAmnt);
+    cout << "<\\ActualParams>\n";
+}
+
+void printFunCall(FUNCTIONCALL* func, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<FunctionCall>\n";
+    printIden(func->iden, indentAmnt);
+    if (func->hasAct == true){
+        printAct(func->act, indentAmnt);
+    }
+    printTabs(indentAmnt);
+    cout << "<\\FunctionCall>\n";
+}
+
+// NEED TO ADD FUNCTIONCALL
+void printFactor(FACTOR* fac, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Factor>\n";
+    if (dynamic_cast<IDENTIFIER*>(fac) != NULL){
+        IDENTIFIER* printFac = dynamic_cast<IDENTIFIER*>(fac);
+        printIden(printFac, indentAmnt);
+    }
+    else if (dynamic_cast<LITERAL*>(fac) != NULL){
+        LITERAL* printFac = dynamic_cast<LITERAL*>(fac);
+        printLit(printFac, indentAmnt);
+    }
+    else if (dynamic_cast<SUBEXPRESSION*>(fac) != NULL){
+        SUBEXPRESSION* printFac = dynamic_cast<SUBEXPRESSION*>(fac);
+        printSubEXPR(printFac, indentAmnt);
+    }
+    else if (dynamic_cast<FUNCTIONCALL*>(fac) != NULL){
+        FUNCTIONCALL* printFac = dynamic_cast<FUNCTIONCALL*>(fac);
+        printFunCall(printFac, indentAmnt);
+    }
+    printTabs(indentAmnt);
+    cout << "<\\Factor>\n";
+}
+
+void printTerm(TERM* terms, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Term>\n";
+    printFactor(terms->lFac, indentAmnt);
+    vector<FACTOR*> ::iterator iterTrm;
+    int counter = 0;
+    for (iterTrm = (terms->rFac).begin(); iterTrm != (terms->rFac).end(); ++iterTrm){
+        printTabs(indentAmnt+1);
+        cout << "<Multiplicitive Op>\n";
+        printTabs(indentAmnt+2);
+        cout << terms->mulOP[counter] << "\n";
+        printTabs(indentAmnt+1);
+        cout << "<\\Multiplicitive Op>\n";
+        printFactor(*iterTrm, indentAmnt);
+        counter += 1;
+    }
+    printTabs(indentAmnt);
+    cout << "<\\Term>\n";
+}
+
+void printSiEXPR(SIEXPR* simpExp, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<SimpleExpr>\n";
+    printTerm(simpExp->trm,indentAmnt);
+    
+    vector<TERM*> ::iterator iterSimp;
+    int counter = 0;
+    for (iterSimp = (simpExp->rTrm).begin(); iterSimp != (simpExp->rTrm).end(); ++iterSimp){
+        printTabs(indentAmnt+1);
+        cout << "<Additive Op>\n";
+        printTabs(indentAmnt+2);
+        cout << simpExp->addOP[counter] << "\n";
+        printTabs(indentAmnt+1);
+        cout << "<\\Additive Op>\n";
+        printTerm(*iterSimp,indentAmnt);
+        counter += 1;
+    }
+    printTabs(indentAmnt);
+    cout << "<\\SimpleExpr>\n";
+}
+
+void printEXPR(EXPR* express, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Expression>\n";
+    printSiEXPR(express->lExpres, indentAmnt);
+    
+    vector<SIEXPR*> ::iterator iterEXPR;
+    int counter = 0;
+    for (iterEXPR = (express->rExpres).begin(); iterEXPR != (express->rExpres).end(); ++iterEXPR){
+        printTabs(indentAmnt + 1);
+        cout << "<Relational Op>\n";
+        printTabs(indentAmnt + 2);
+        cout << express->relOP[counter] << "\n";
+        printTabs(indentAmnt + 1);
+        cout << "<\\Relational Op>\n";
+        printSiEXPR(*iterEXPR, indentAmnt);
+        counter += 1;
+    }
+    printTabs(indentAmnt);
+    cout << "<\\Expression>\n";
+}
+
+void printBLK(BLOCK* blk, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Block>\n";
+    XML(&blk->stmts, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\Block>\n";
+}
+
+void printVarD(VD* printVD, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<VariableDecl>\n";       
+    printIden(printVD->iden, indentAmnt);
+
+    printTabs(indentAmnt);
+    cout << "<Type>\n";
+    printTabs(indentAmnt+1);
+    cout <<printVD->typ<<"\n";
+    printTabs(indentAmnt);
+    cout << "<\\Type>\n";
+    printTabs(indentAmnt);
+
+    printEXPR(printVD->express, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\VariableDecl>\n";
+}
+
+void printAssing(AS* printAS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<Assignment>\n";         
+    printIden(printAS->iden, indentAmnt);
+    printEXPR(printAS->express, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\Assignment>\n";
+}
+
+void printPState(PS* printPS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<PrintStatement>\n";
+    printEXPR(printPS->express, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\PrintStatement>\n";
+}
+
+void printIState(IS* printIS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<IfStatement>\n";         
+    printEXPR(printIS->express, indentAmnt);
+    printBLK(printIS->blk, indentAmnt);
+    if (printIS->elSe == true){
+        cout << "<Else>\n";
+        printBLK(printIS->blks, indentAmnt);
+        cout << "<\\Else>\n";
+    }
+    printTabs(indentAmnt);
+    cout << "<\\IfStatement>\n";
+}
+
+void printFState(FS* printFS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<ForStatement>\n";  
+    if ( printFS->hasVarDec == true){
+        VD* printVD = dynamic_cast<VD*>(printFS->varDec);
+        printVarD(printVD, indentAmnt);
+    }
+
+    printEXPR(printFS->express, indentAmnt);
+
+    if ( printFS->hasAssignMNT == true){
+        AS* printAS = dynamic_cast<AS*>(printFS->assignMNT);
+        printAssing(printAS, indentAmnt);
+    }
+
+    BLOCK* printBLCK = dynamic_cast<BLOCK*>(printFS->blck);
+    printBLK(printBLCK, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\ForStatement>\n";
+}
+
+void printWState(WS* printWS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<WhileStatement>\n";
+    printEXPR(printWS->express, indentAmnt);
+
+    BLOCK* printBLCK = dynamic_cast<BLOCK*>(printWS->blck);
+    printBLK(printBLCK,indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\WhileStatement>\n";
+}
+
+void printRState(RS* printRS, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<ReturnStatement>\n";
+    printEXPR(printRS->express, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\ReturnStatement>\n";
+}
+
+void printPRM(FORMALPARAM* param, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<FormalParam>\n";
+    printIden(param->iden, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<Type>\n";
+    printTabs(indentAmnt+1);
+    cout <<param->typ<<"\n";
+    printTabs(indentAmnt);
+    cout << "<\\Type>\n";
+    printTabs(indentAmnt);
+    cout << "<\\FormalParam>\n";
+}
+
+void printFmlPRMS(FORMALPARAMS* params, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<FormalParams>\n";
+    printPRM(params->fmlprms, indentAmnt);
+    
+
+    if(params->hasMorePRMS == true){
+        vector<FORMALPARAM*>::iterator iterFPM;
+        for (iterFPM = (params->morePRMS).begin(); iterFPM != (params->morePRMS).end(); ++iterFPM){
+            printPRM(*iterFPM, indentAmnt);
+        }
+    }
+    printTabs(indentAmnt);
+    cout << "<\\FormalParams>\n";
+}
+
+void printFDec(FD* printFD, int indentAmnt){
+    indentAmnt += 1;
+    printTabs(indentAmnt);
+    cout << "<FunctionDecleration>\n";
+    printIden(printFD->iden, indentAmnt);
+
+    if (printFD->hasFParams == true){
+        printFmlPRMS(printFD->FParams, indentAmnt);
+    }
+
+    printTabs(indentAmnt);
+    cout << "<Type>\n";
+    printTabs(indentAmnt+1);
+    cout <<printFD->typ <<"\n";
+    printTabs(indentAmnt);
+    cout << "<\\Type>\n";
+
+    BLOCK* blockkk = dynamic_cast<BLOCK*>(printFD->blck);
+    printBLK(blockkk, indentAmnt);
+    printTabs(indentAmnt);
+    cout << "<\\FunctionDecleration>\n";
+}
+
+int XML(vector<Statement*> *AST, int indentAmnt){
+    vector<Statement*>::iterator iter;
+    indentAmnt += 1;
+    
+    for (iter = AST->begin(); iter != AST->end(); ++iter){
+        printTabs(indentAmnt);
+        cout <<"<Statement>\n";
+        // prints out memory location
+        // cout << *iter;
+        if (dynamic_cast<VD*>(*iter) != NULL){
+            VD* printVD = dynamic_cast<VD*>(*iter);
+            printVarD(printVD, indentAmnt);
+        }
+        else if (dynamic_cast<AS*>(*iter) != NULL){
+            AS* printAS = dynamic_cast<AS*>(*iter);
+            printAssing(printAS, indentAmnt);
+        }
+        else if (dynamic_cast<PS*>(*iter) != NULL){
+            PS* printPS = dynamic_cast<PS*>(*iter);
+            printPState(printPS, indentAmnt);
+        }
+        else if (dynamic_cast<IS*>(*iter) != NULL){
+            IS* printIS = dynamic_cast<IS*>(*iter);
+            printIState(printIS, indentAmnt);
+        }   
+        else if (dynamic_cast<FS*>(*iter) != NULL){
+            FS* printFS = dynamic_cast<FS*>(*iter);
+            printFState(printFS, indentAmnt);
+        }
+        else if (dynamic_cast<WS*>(*iter) != NULL){
+            WS* printWS = dynamic_cast<WS*>(*iter);
+            printWState(printWS, indentAmnt);
+        }
+        else if (dynamic_cast<RS*>(*iter) != NULL){
+            RS* printRS = dynamic_cast<RS*>(*iter);
+            printRState(printRS, indentAmnt);
+        }
+        else if (dynamic_cast<FD*>(*iter) != NULL){
+            FD* printFD = dynamic_cast<FD*>(*iter);
+            printFDec(printFD, indentAmnt);
+        }
+        else if (dynamic_cast<BLOCK*>(*iter) != NULL){
+            BLOCK* printBLOCK = dynamic_cast<BLOCK*>(*iter);
+            printBLK(printBLOCK, indentAmnt);
+        }
+        printTabs(indentAmnt);
+        cout <<"<\\Statement>\n";
+    }
+
+    
+    return 0;
+}
+
 int main(){
     ifstream myfile("example.txt");
     string line;
@@ -1576,6 +1997,11 @@ int main(){
 
         vector<Statement*> *returnAST = parser(fileVector);  
         cout << returnAST;
+        int indentAmnt = 0;
+        cout << "\n";
+        cout << "<Program>\n";
+        XML(returnAST, indentAmnt);
+        cout << "<\\Program>\n";
     }
     
 }
