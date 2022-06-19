@@ -214,6 +214,13 @@ class SUBEXPRESSION : public FACTOR{
         bool rBrac;
 };
 
+class Scope{
+    public:
+        virtual ~Scope() = default;
+        vector<string> vars;
+        vector<char> varType;
+};
+
 char NextChar(vector<char> input,int decrement){
     static int nextcharpointer = -1;
     if (decrement == -1){
@@ -1926,8 +1933,6 @@ int XML(vector<Statement*> *AST, int indentAmnt){
     for (iter = AST->begin(); iter != AST->end(); ++iter){
         printTabs(indentAmnt);
         cout <<"<Statement>\n";
-        // prints out memory location
-        // cout << *iter;
         if (dynamic_cast<VD*>(*iter) != NULL){
             VD* printVD = dynamic_cast<VD*>(*iter);
             printVarD(printVD, indentAmnt);
@@ -1972,6 +1977,87 @@ int XML(vector<Statement*> *AST, int indentAmnt){
     return 0;
 }
 
+string semIdenReturn(IDENTIFIER* ident){
+    return ident->iden;
+}
+
+bool checkVarDec(string var, vector<Scope> *scopes){
+    vector<Scope>::iterator iter;
+    for (iter = scopes->begin(); iter != scopes->end(); ++iter){
+        vector<Scope>::iterator iterStringx;
+        for ()
+    }
+}
+
+void semBLK(BLOCK* checkBLK, vector<Scope> *scopes){
+    semanticPass(&checkBLK->stmts, scopes);
+}
+
+
+void semVD(VD* checkVD, vector<Scope> *scopes){
+    Scope editScope = scopes->back();
+
+
+    string idenR = semIdenReturn(checkVD->iden);
+    bool check = checkVarDec(idenR, scopes);
+    editScope.vars.push_back(idenR);
+
+
+    scopes->pop_back();
+    scopes->push_back(editScope);
+}
+
+void semAssign(AS* checkAS, vector<Scope> *scopes){
+
+}
+
+
+
+int semanticPass(vector<Statement*> *AST,vector<Scope> *scopes){
+    Scope curScope;
+    scopes->push_back(curScope);
+    vector<Statement*>::iterator iter;
+    for (iter = AST->begin(); iter != AST->end(); ++iter){
+        if (dynamic_cast<VD*>(*iter) != NULL){
+            VD* checkVD = dynamic_cast<VD*>(*iter);
+            semVD(checkVD, scopes);
+        }
+        else if (dynamic_cast<AS*>(*iter) != NULL){
+            AS* checkAS = dynamic_cast<AS*>(*iter);
+            semAssign(checkAS, scopes);
+        }
+        else if (dynamic_cast<PS*>(*iter) != NULL){
+
+        }
+        else if (dynamic_cast<IS*>(*iter) != NULL){
+            IS* printIS = dynamic_cast<IS*>(*iter);
+            // printIState(printIS, indentAmnt);
+        }   
+        else if (dynamic_cast<FS*>(*iter) != NULL){
+            FS* printFS = dynamic_cast<FS*>(*iter);
+            // printFState(printFS, indentAmnt);
+        }
+        else if (dynamic_cast<WS*>(*iter) != NULL){
+            WS* printWS = dynamic_cast<WS*>(*iter);
+            // printWState(printWS, indentAmnt);
+        }
+        else if (dynamic_cast<RS*>(*iter) != NULL){
+            RS* printRS = dynamic_cast<RS*>(*iter);
+            // printRState(printRS, indentAmnt);
+        }
+        else if (dynamic_cast<FD*>(*iter) != NULL){
+            FD* printFD = dynamic_cast<FD*>(*iter);
+            // printFDec(printFD, indentAmnt);
+        }
+        else if (dynamic_cast<BLOCK*>(*iter) != NULL){
+            BLOCK* printBLOCK = dynamic_cast<BLOCK*>(*iter);
+            semBLK(printBLOCK, scopes);
+        }
+    }
+    scopes->pop_back();
+    return 0;
+}
+
 int main(){
     ifstream myfile("example.txt");
     string line;
@@ -1991,10 +2077,6 @@ int main(){
         }
         myfile.close();
 
-        //print vector as string
-        // std::string s(fileVector.begin(), fileVector.end());
-        // std::cout << s <<"\n";
-
         vector<Statement*> *returnAST = parser(fileVector);  
         cout << returnAST;
         int indentAmnt = 0;
@@ -2002,6 +2084,9 @@ int main(){
         cout << "<Program>\n";
         XML(returnAST, indentAmnt);
         cout << "<\\Program>\n";
+
+        vector<Scope> *scopes = {};
+        semanticPass(returnAST, &scopes);
     }
     
 }
