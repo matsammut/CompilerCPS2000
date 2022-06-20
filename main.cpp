@@ -218,7 +218,7 @@ class Scope{
     public:
         virtual ~Scope() = default;
         vector<string> vars;
-        vector<char> varType;
+        vector<string> varType;
 };
 
 char NextChar(vector<char> input,int decrement){
@@ -700,7 +700,7 @@ LITERAL* literal(vector<char> fileVector){
     }while(nextToken.stackTop == 33);
 
     if(nextToken.stackTop == 5){
-        returnLit->literalType = "CHAR";
+        returnLit->literalType = "char";
         do{
             nextToken = getNextToken(fileVector, false);
         }while(nextToken.stackTop == 33);
@@ -710,15 +710,15 @@ LITERAL* literal(vector<char> fileVector){
         }while(nextToken.stackTop == 33);
     }
     else if(nextToken.lexemeFin == "true" ||nextToken.lexemeFin == "false"){
-        returnLit->literalType = "BOOL";
+        returnLit->literalType = "bool";
         returnLit->contentsType = nextToken.lexemeFin;
     }
     else if(nextToken.stackTop == 1){
-        returnLit->literalType = "INT";
+        returnLit->literalType = "int";
         returnLit->contentsType = nextToken.lexemeFin;
     }
     else if(nextToken.stackTop == 3){
-        returnLit->literalType = "FLOAT";
+        returnLit->literalType = "float";
         returnLit->contentsType = nextToken.lexemeFin;
     }
     else{
@@ -1977,41 +1977,163 @@ int XML(vector<Statement*> *AST, int indentAmnt){
     return 0;
 }
 
+int semanticPass(vector<Statement*> *AST,vector<Scope> *scopes);
+
+bool checkExpr(EXPR* express, string type, vector<Scope> *scopes);
+
 string semIdenReturn(IDENTIFIER* ident){
     return ident->iden;
+}
+
+bool checkVarType(string var,string typ, vector<Scope> *scopes){
+    vector<Scope>::iterator iter;
+    for (iter = scopes->begin(); iter != scopes->end(); ++iter){
+        vector<string>::iterator iterString;
+        int counter = 0;
+        for (iterString = iter->vars.begin(); iterString != iter->vars.end(); ++iterString){
+            counter ++;
+            if (*iterString == var){
+                if(iter->varType[counter] == typ){
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 bool checkVarDec(string var, vector<Scope> *scopes){
     vector<Scope>::iterator iter;
     for (iter = scopes->begin(); iter != scopes->end(); ++iter){
-        vector<Scope>::iterator iterStringx;
-        for ()
+        vector<string>::iterator iterString;
+        for (iterString = iter->vars.begin(); iterString != iter->vars.end(); ++iterString){
+            if (*iterString == var){
+                return true;
+            }
+        }
     }
+    return false;
+}
+
+// bool checkType(string typ, vector<Scope> *scopes){
+//     vector<Scope>::iterator iter;
+//     for (iter = scopes->begin(); iter != scopes->end(); ++iter){
+//         auto itVar = iter->vars.begin();
+//         auto itTyp = iter->varType.begin();
+//         while(itVar != iter->vars.end() || itTyp != iter->varType.end())
+//         {
+//             if (*itTyp == var){
+//                 return true;
+//             }
+//         }
+//     }
+// }
+
+bool checkLit(LITERAL* lit, string typ){
+    if(lit->literalType == typ){
+        return true;
+    }
+    return false;
 }
 
 void semBLK(BLOCK* checkBLK, vector<Scope> *scopes){
     semanticPass(&checkBLK->stmts, scopes);
 }
 
+bool checkFac(FACTOR* fac, string typ,vector<Scope> *scopes){
+    if (dynamic_cast<IDENTIFIER*>(fac) != NULL){
+        IDENTIFIER* checkFac = dynamic_cast<IDENTIFIER*>(fac);
+        string iden = semIdenReturn(checkFac);
+        if (checkVarDec(iden, scopes)){
+            if(checkVarType(iden, typ, scopes)){
+                return true;
+            }
+            else{
+                // cout<< "ERROR VARIABLE TYPES DONT MATCH";
+                // exit(0);
+                return false;
+            }
+        }
+        else{
+            // cout << "ERROR VARIABLE UNDELARED IN SCOPE";
+            // exit(0);
+            return false;
+        }
+    }
+    else if (dynamic_cast<LITERAL*>(fac) != NULL){
+        LITERAL* checkFac = dynamic_cast<LITERAL*>(fac);
+        if(checkLit(checkFac, typ)){
+            return true;
+        }
+        else{
+            // cout<< "ERROR VARIABLE TYPES DONT MATCH";
+            // exit(0);
+            return false;
+        }
+    }
+    else if (dynamic_cast<SUBEXPRESSION*>(fac) != NULL){
+        SUBEXPRESSION* checkFac = dynamic_cast<SUBEXPRESSION*>(fac);
+        return checkExpr(checkFac->expression, typ, scopes);
+    }
+    // Todo
+    // else if (dynamic_cast<FUNCTIONCALL*>(fac) != NULL){
+    //     FUNCTIONCALL* printFac = dynamic_cast<FUNCTIONCALL*>(fac);
+    //     printFunCall(printFac, indentAmnt);
+    // }
+    return true;
+}
 
-void semVD(VD* checkVD, vector<Scope> *scopes){
+bool checkTerm(TERM* trm, string typ, vector<Scope> *scopes){
+    bool lFac = checkFac(trm->lFac, typ,scopes);
+
+    return lFac;
+}
+
+bool checkSiExpr(SIEXPR* simpexp, string typ, vector<Scope> *scopes){
+    bool lTrm = checkTerm(simpexp->trm, typ,scopes);
+    return lTrm;
+}
+
+bool checkExpr(EXPR* express, string type, vector<Scope> *scopes){
+    bool lSiEX = checkSiExpr(express->lExpres,type,scopes);
+    return lSiEX;
+}
+
+bool semVD(VD* checkVD, vector<Scope> *scopes){
     Scope editScope = scopes->back();
-
 
     string idenR = semIdenReturn(checkVD->iden);
     bool check = checkVarDec(idenR, scopes);
-    editScope.vars.push_back(idenR);
+    if (check == true){
+        // cout << "ERROR VAR NAME HAS ALREADY BEEN DECLARED IN THIS SCOPE";
+        // exit(0);
+        return false;
+    }
+    else{
+        editScope.vars.push_back(idenR);
+    }
+    
+    editScope.varType.push_back(checkVD->typ);
 
-
+    checkExpr(checkVD->express, checkVD->typ,scopes);
     scopes->pop_back();
     scopes->push_back(editScope);
+    return true;
 }
 
-void semAssign(AS* checkAS, vector<Scope> *scopes){
+bool semAssign(AS* checkAS, vector<Scope> *scopes){
+    string idenR = semIdenReturn(checkAS->iden);
+    bool check = checkVarDec(idenR, scopes);
+    if (check){
+        // checkExpr();
+    }
+    else{
+        // variable hasnt been declared
+        return false;
+    }
 
+    return true;
 }
-
-
 
 int semanticPass(vector<Statement*> *AST,vector<Scope> *scopes){
     Scope curScope;
@@ -2029,26 +2151,26 @@ int semanticPass(vector<Statement*> *AST,vector<Scope> *scopes){
         else if (dynamic_cast<PS*>(*iter) != NULL){
 
         }
-        else if (dynamic_cast<IS*>(*iter) != NULL){
-            IS* printIS = dynamic_cast<IS*>(*iter);
-            // printIState(printIS, indentAmnt);
-        }   
-        else if (dynamic_cast<FS*>(*iter) != NULL){
-            FS* printFS = dynamic_cast<FS*>(*iter);
-            // printFState(printFS, indentAmnt);
-        }
-        else if (dynamic_cast<WS*>(*iter) != NULL){
-            WS* printWS = dynamic_cast<WS*>(*iter);
-            // printWState(printWS, indentAmnt);
-        }
-        else if (dynamic_cast<RS*>(*iter) != NULL){
-            RS* printRS = dynamic_cast<RS*>(*iter);
-            // printRState(printRS, indentAmnt);
-        }
-        else if (dynamic_cast<FD*>(*iter) != NULL){
-            FD* printFD = dynamic_cast<FD*>(*iter);
-            // printFDec(printFD, indentAmnt);
-        }
+        // else if (dynamic_cast<IS*>(*iter) != NULL){
+        //     IS* printIS = dynamic_cast<IS*>(*iter);
+        //     // printIState(printIS, indentAmnt);
+        // }   
+        // else if (dynamic_cast<FS*>(*iter) != NULL){
+        //     FS* printFS = dynamic_cast<FS*>(*iter);
+        //     // printFState(printFS, indentAmnt);
+        // }
+        // else if (dynamic_cast<WS*>(*iter) != NULL){
+        //     WS* printWS = dynamic_cast<WS*>(*iter);
+        //     // printWState(printWS, indentAmnt);
+        // }
+        // else if (dynamic_cast<RS*>(*iter) != NULL){
+        //     RS* printRS = dynamic_cast<RS*>(*iter);
+        //     // printRState(printRS, indentAmnt);
+        // }
+        // else if (dynamic_cast<FD*>(*iter) != NULL){
+        //     FD* printFD = dynamic_cast<FD*>(*iter);
+        //     // printFDec(printFD, indentAmnt);
+        // }
         else if (dynamic_cast<BLOCK*>(*iter) != NULL){
             BLOCK* printBLOCK = dynamic_cast<BLOCK*>(*iter);
             semBLK(printBLOCK, scopes);
@@ -2085,8 +2207,9 @@ int main(){
         XML(returnAST, indentAmnt);
         cout << "<\\Program>\n";
 
-        vector<Scope> *scopes = {};
-        semanticPass(returnAST, &scopes);
+        // doesn't work fully
+        // vector<Scope> *scopes = {};
+        // semanticPass(returnAST, scopes);
     }
     
 }
